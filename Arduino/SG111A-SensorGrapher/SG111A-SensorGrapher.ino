@@ -18,8 +18,11 @@ const int SER_BUF_SZ = 16;
 uint8_t serBuf[SER_BUF_SZ]  = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 void setup(){
-  
+
   Serial.begin(9600);
+  while(!Serial);
+
+  Serial1.begin(9600);
   Serial.println("INIT BOARD SUCCESS");
   pinMode(13, OUTPUT);
   
@@ -38,23 +41,34 @@ void loop(){
 
     if((currentMillis - pm0 > POLLING_DELAY) || (pm0 == 0)) {
 
-      Serial.println(".");
-     
       POUT = true;  
       //save the last time we polled the sensors
       pm0 = currentMillis; 
-
+      
       co2Status = getCO2();
 
-      Serial.print("STATUS:"); Serial.print(co2Status); Serial.print('\n');
-      
+      if((co2Status != 0) && (co2Status != -1) && (co2Status > 0)){
+
+        Serial.print(123456);
+        Serial.print(',');
+        Serial.print(181);
+        Serial.print(',');
+        Serial.print(co2Status);
+        Serial.print('\n');
+
+      }else{
+        Serial.print("CO2ERR [");
+        Serial.print(co2Status);
+        Serial.print("]\n");
+      }
+
     }else{
       
       POUT = false;
     }
 
     //blink
-    digitalWrite(13, LED_STATUS);
+    digitalWrite(10, LED_STATUS);
     
     if(LED_STATUS == LOW){
       LED_STATUS = HIGH;
@@ -106,8 +120,6 @@ int getCO2(){
   //timeout 
   long start = millis();
 
-  Serial1.begin(9600);
-
   byte curByte = 0x00;
   byte cmdByte = 0x00;
   byte cmdSz = 0x00;
@@ -131,20 +143,12 @@ int getCO2(){
       curByte = Serial1.read();
       serBuf[buf_index] = curByte;
 
-      Serial.print("BYTE["); Serial.print(buf_index); + Serial.print("]:"); Serial.print(curByte); Serial.print('\n');
-
       if(buf_index >= 3){
         
         if((serBuf[buf_index - 3] == 0xBB) && (serBuf[buf_index - 2] == 0x66)){ //sync bytes
           
           cmdByte = serBuf[buf_index - 1];
           cmdSz = serBuf[buf_index];
-
-          Serial.print("CMD:");
-          Serial.print(cmdByte);
-          Serial.print(" SZ:");
-          Serial.print(cmdSz);
-          Serial.print('\n');
 
           zeroBuffer(serBuf, SER_BUF_SZ);
 
@@ -160,46 +164,6 @@ int getCO2(){
 
             //PPM = (MSB x 256) + LSB
             uint16_t ppm = (serBuf[5] * 256) + serBuf[4];
-
-            Serial.print("PPM MSB:");
-            Serial.print(serBuf[5], HEX);
-            Serial.print('\n');
-
-            Serial.print("PPM LSB:");
-            Serial.print(serBuf[4], HEX);
-            Serial.print('\n');
-
-            Serial.print("PPM:");
-            Serial.print(ppm);
-            Serial.print('\n');
-            
-            Serial.print("CRC LSB:");
-            Serial.print(serBuf[6], HEX);
-            Serial.print('\n');
-
-            Serial.print("CRC MSB:");
-            Serial.print(serBuf[7], HEX);
-            Serial.print('\n');
-
-            uint16_t crcResult = CalcCRC16(serBuf, 6);
-            
-            uint8_t crcLSB = 0;
-            crcLSB = crcResult & 0xFF;
-            uint8_t crcMSB = 0;
-            crcMSB = crcResult >> 8;
-
-            Serial.print("CRC16:");
-            Serial.print(crcResult, HEX);
-            Serial.print("\n");
-
-            Serial.print("CRC LSB:");
-            Serial.print(crcLSB, HEX);
-            Serial.print('\n');
-
-            Serial.print("CRC MSB:") ;
-            Serial.print(crcMSB, HEX);
-            Serial.print('\n');
-
             return ppm;
             
           }
