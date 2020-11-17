@@ -41,8 +41,6 @@ void loop(){
     cm0 = currentMillis;
 
     if((currentMillis - pm0 > POLLING_DELAY) || (pm0 == 0)) {
-
-      Serial.println(".");
      
       POUT = true;  
       //save the last time we polled the sensors
@@ -50,7 +48,11 @@ void loop(){
 
       co2Status = sgxx.getCO2();
 
-      Serial.print("STATUS:"); Serial.print(co2Status); Serial.print('\n');
+      if((co2Status < 350) || (co2Status > 10000)){
+        Serial.print("READ ERROR\n");
+      }else{
+        Serial.print("CO2 VAL:"); Serial.print(co2Status); Serial.print('\n');
+      }
       
     }else{
       
