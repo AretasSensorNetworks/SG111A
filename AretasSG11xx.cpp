@@ -28,7 +28,177 @@ void AretasSG11xx::begin(){
 }
 
 /**
+ * returns the ABC mode setting:
+ * 0 ABC is disabled
+ * 1 ABC is enabled
+ * -1 means we failed to get the setting
+ */
+int8_t AretasSG11xx::getABCMode(){
+  
+  uint8_t command[6] = {0xAA, 0x55, 0x20, 0x00, 0x00, 0x00};
+  uint8_t result[8] = {'\0','\0','\0','\0','\0','\0','\0','\0'};
+
+  uint16_t crc16 = CalcCRC16(command, 4);
+
+  command[4] = (uint8_t)crc16; //crc lsb
+  command[5] = (uint8_t)(crc16>>8); //crc msb
+
+  anySerial->write(command, 6);
+  anySerial->listen();
+  anySerial->readBytes(result, 8);
+
+  if(result[0] == 0xBB && result[1] == 0x66 && result[2] == 0x21){
+    return result[5];
+  }else{
+    return -1;
+  }
+  
+}
+
+/**
+ * set the ABC mode; true: enabled, false: disabled
+ * returns: 1 success, -1 failure
+ */
+int8_t AretasSG11xx::setABCMode(boolean state){
+
+  uint8_t _state = state;
+
+  uint8_t command[8] = {0xAA, 0x55, 0x22, 0x02, 0x00, 0x00, 0x00, 0x00};
+  command[5] = _state;
+
+  uint8_t result[6] = {'\0','\0', '\0', '\0', '\0', '\0'};
+
+  uint16_t crc16 = CalcCRC16(command, 6);
+
+  command[6] = (uint8_t)crc16; //crc lsb
+  command[7] = (uint8_t)(crc16>>8); //crc msb
+
+  anySerial->write(command, 8);
+  anySerial->listen();
+  anySerial->readBytes(result, 6);
+
+  if(result[0] == 0xBB && result[1] == 0x66 && result[2] == 0x23){
+    return 1;
+  }else{
+    return -1;
+  }
+}
+
+/**
+ * gets the ABC duration from the CO2 sensor
+ * returns: some number indicating the ABC period in days
+ * -1 indicates a failure to get the setting
+ */
+int16_t AretasSG11xx::getABCDuration(){
+  
+  uint8_t command[6] = {0xAA, 0x55, 0x24, 0x00, 0x00, 0x00};
+  uint8_t result[8] = {'\0','\0','\0','\0','\0','\0','\0','\0'};
+
+  uint16_t crc16 = CalcCRC16(command, 4);
+  uint16_t ret = 0;
+
+  command[4] = (uint8_t)crc16; //crc lsb
+  command[5] = (uint8_t)(crc16>>8); //crc msb
+
+  anySerial->write(command, 6);
+  anySerial->listen();
+  anySerial->readBytes(result, 8);
+
+  if(result[0] == 0xBB && result[1] == 0x66 && result[2] == 0x25){
+    ret = result[5] << 8;
+    ret = ret + result[4];
+    return (int16_t)ret;
+  }else{
+    return -1;
+  }
+  
+}
+/**
+ * sets the ABC duration (only tested up to 7 days)
+ * returns: 1 (indicates "success")
+ * -1 indicates failure
+ */
+int8_t AretasSG11xx::setABCDuration(uint16_t duration){
+
+  uint8_t command[8] = {0xAA, 0x55, 0x26, 0x02, 0x00, 0x00, 0x00, 0x00};
+  uint8_t result[6] = {'\0','\0', '\0', '\0', '\0', '\0'};
+
+  command[4] = (uint8_t)duration; //duration LSB
+  command[5] = (uint8_t)(duration >> 8); //duration MSB
+
+  uint16_t crc16 = CalcCRC16(command, 6);
+
+  command[6] = (uint8_t)crc16; //crc lsb
+  command[7] = (uint8_t)(crc16>>8); //crc msb
+
+  anySerial->write(command, 8);
+  anySerial->listen();
+  anySerial->readBytes(result, 6);
+
+  if(result[0] == 0xBB && result[1] == 0x66 && result[2] == 0x27){
+    return 1;
+  }else{
+    return -1;
+  }
+}
+
+/**
+ * This function gets the CO2 measurement on a demand basis
+ * 
+ * Note that calling this function will **disable automatic mode** and that 
+ * all subsequent calls to get the CO2 measurement must use this function
+ * until the sensor is reset
+ * 
+ * There are no retries or timeouts (beyond the native serial timeout)
+ */
+int16_t AretasSG11xx::getCO2aPeriodic(){
+
+  uint8_t command[6] = {0xAA, 0x55, 0x14, 0x00, 0x00, 0x00};
+  uint8_t result[8] = {'\0','\0','\0','\0','\0','\0','\0','\0'};
+
+  uint16_t crc16 = CalcCRC16(command, 4);
+  uint16_t ppm = 0;
+  uint16_t checksumA = 0;
+  uint16_t checksumB = 0;
+
+  command[4] = (uint8_t)crc16; //crc lsb
+  command[5] = (uint8_t)(crc16>>8); //crc msb
+
+  anySerial->write(command, 6);
+  anySerial->listen();
+  anySerial->readBytes(result, 8);
+
+  if(result[0] == 0xBB && result[1] == 0x66 && result[2] == 0x15){
+    
+    ppm = result[5] << 8;
+    ppm = ppm + result[4];
+
+    checksumA = result[7] << 8;
+    checksumA = checksumA + result[6];
+
+    checksumB = CalcCRC16(result, 6);
+
+    if(checksumA != checksumB){
+      return -2;
+    }else{
+      return (int16_t)ppm;
+    }
+
+  }else{
+    return -1;
+  }
+
+}
+
+/**
  * one basic function for now, just return the CO2 as an int value
+ * 
+ * Has some retry logic:
+ *  - if the checksum fails it will retry up to 5 times)
+ *  - tries to read data off the wire for up to 4 seconds before bailing
+ * 
+ * Returns:
+ *  an int value indicating the CO2 level or:
  * -1 return value indicates something weird
  * -2 indicates timeout reading the serial port
  * -3 indicates checksum fail after nRetries
@@ -154,7 +324,7 @@ int AretasSG11xx::getCO2(){
 }
 
 /**
- * Calculate a CRC 16 checksum 
+ * Calculate a CRC 16 checksum, as provided by manufacturer
  */
 uint16_t AretasSG11xx::CalcCRC16 ( uint8_t *cmd , int cmd_length ){
   

@@ -17,6 +17,11 @@ class AretasSG11xx {
     AretasSG11xx(AnySerial *serialPort);
 	void begin();
     int getCO2();
+	int getCO2aPeriodic();
+	int8_t getABCMode();
+	int8_t setABCMode(boolean state);
+	int16_t getABCDuration();
+	int8_t setABCDuration(uint16_t duration);
     void enableDebug(boolean arg);
 
 	private:
