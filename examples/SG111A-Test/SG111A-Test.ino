@@ -27,8 +27,13 @@ boolean CALIBRATING = true;
 
 int LED_STATUS = HIGH;
 
-SoftwareSerial sgSerial(A0, A1); //change the pins to match your requirements
-AnySerial co2Serial(&sgSerial);
+//for a standard Aretas Board (a.g. A800028, A800016, A800046, etc.)
+//SoftwareSerial sgSerial(A0, A1); //change the pins to match your requirements
+//AnySerial co2Serial(&sgSerial);
+//AretasSG11xx sgxx(&co2Serial);
+
+//for A800040
+AnySerial co2Serial(&Serial1);
 AretasSG11xx sgxx(&co2Serial);
 
 void setup(){
