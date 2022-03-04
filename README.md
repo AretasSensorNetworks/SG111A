@@ -1,5 +1,5 @@
 # SG111A
-Firmware for Sensera / Nanotron / Inpixon / Tempus CO2 sensor
+Firmware for Sensera / Nanotron / Inpixon CO2 sensor
 
 Firmware for SG111A / SG112A / SG112B / PSA112ASN / PSA112BSN
 
